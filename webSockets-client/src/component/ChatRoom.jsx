@@ -294,7 +294,7 @@ export default function ChatRoom() {
                     <button type="button" onClick={registerUser}>
                         Conectarse
                     </button>
-                    
+                    {/* coment */}
                 </div>
             )}
         </div>
