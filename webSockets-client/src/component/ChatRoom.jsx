@@ -269,17 +269,17 @@ export default function ChatRoom() {
                 
             ) : (
                 <div className="register">
-                    <h2>Join Chat</h2>
+                    <h2>Unirse al chat</h2>
                     <input
                         id="user-name"
                         name="username"
-                        placeholder="Enter your name"
+                        placeholder="Ingresa tu nombre"
                         value={userData.username}
                         onChange={handleValue}
                         onKeyPress={(e) => e.key === 'Enter' && registerUser()}
                     />
                     <button type="button" onClick={registerUser}>
-                        Connect
+                        Conectar
                     </button>
                 </div>
             )}

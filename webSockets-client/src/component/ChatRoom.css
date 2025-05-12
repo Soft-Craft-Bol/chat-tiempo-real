@@ -7,6 +7,9 @@
     box-sizing: border-box;
 }
 
+h2{
+    padding-bottom: 20px;
+}
 /* Contenedor principal */
 .container {
     max-width: 900px;
