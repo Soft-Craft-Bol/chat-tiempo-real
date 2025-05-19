@@ -1,19 +1,20 @@
 import { useState, useEffect } from "react";
 import { over } from "stompjs";
 import SockJS from "sockjs-client";
+import { Toaster, toast } from "sonner";
 import "./ChatRoom.css";
 
 var stompClient = null;
 export default function ChatRoom() {
   const [publicChats, setPublicChats] = useState([]);
   const [privateChats, setPrivateChats] = useState(new Map());
-  const [connectedUsers, setConnectedUsers] = useState([]);
   const [tab, setTab] = useState("CHATROOM");
   const [userData, setUserData] = useState({
     username: "",
     connected: false,
     message: "",
   });
+  const [connectedUsers, setConnectedUsers] = useState([]);
 
   const handleValue = (e) => {
     const { value, name } = e.target;
@@ -21,7 +22,9 @@ export default function ChatRoom() {
   };
 
   const registerUser = () => {
-    if (!userData.username.trim()) return;
+    const username = userData.username.trim() || `usuario_123`;
+
+    setUserData((prev) => ({ ...prev, username }));
 
     let Sock = new SockJS("http://localhost:9090/ws");
     stompClient = over(Sock);
@@ -78,7 +81,8 @@ export default function ChatRoom() {
 
     switch (payloadData.status) {
       case "JOIN":
-        // Notificación de quien se unió
+        toast.success("Un usuario se unio al chat.");
+        // Agregar una notificación de quien se unió
         setPublicChats((prev) => [
           ...prev,
           {
@@ -98,7 +102,7 @@ export default function ChatRoom() {
         setPublicChats((prev) => [...prev, payloadData]);
         break;
       case "LEAVE":
-        // Notificación de quien dejó el chat
+        toast.error(`${payloadData.senderName} se desconectó del chat.`);
         setPublicChats((prev) => [
           ...prev,
           {
@@ -107,9 +111,10 @@ export default function ChatRoom() {
             status: "SYSTEM",
           },
         ]);
+        // Eliminar al usuario de la lista de conectados
         setConnectedUsers((prev) =>
           prev.filter((user) => user !== payloadData.senderName)
-        ); // Actualizar lista de usuarios conectados
+        );
         break;
       default:
         break;
@@ -174,7 +179,7 @@ export default function ChatRoom() {
         JSON.stringify({ username: userData.username })
       );
       stompClient.disconnect();
-      setUserData({ ...userData, connected: false });
+      setUserData({ ...userData, connected: false }); // Actualiza el estado de la conexión
     }
   };
 
@@ -186,122 +191,146 @@ export default function ChatRoom() {
 
   return (
     <div className="container">
+      <h1
+        style={{
+          color: "Black",
+          fontSize: "2rem",
+          textAlign: "center",
+          marginBottom: "20px",
+        }}
+        className="title"
+      >
+        Chat App
+      </h1>
+      <Toaster
+        dir="auto"
+        closeButton
+        richColors
+        visibleToasts={2}
+        duration={2000}
+        position="top-center"
+      />
+
       {userData.connected ? (
-        <div className="chat-box">
+        <>
+          <div className="chat-box">
+            <div className="member-list">
+              <ul>
+                <li
+                  onClick={() => setTab("CHATROOM")}
+                  className={`member ${tab === "CHATROOM" && "active"}`}
+                >
+                  Chat Grupal
+                </li>
+                {connectedUsers
+                  .filter(
+                    (username) => username && username !== userData.username
+                  )
+                  .map((username, index) => (
+                    <li
+                      key={index}
+                      onClick={() => setTab(username)}
+                      className={`member ${tab === username && "active"}`}
+                    >
+                      {username}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+
+            {tab === "CHATROOM" ? (
+              <div className="chat-content">
+                <ul className="chat-messages">
+                  {publicChats.map((chat, index) => (
+                    <li
+                      key={index}
+                      className={`message ${
+                        chat.status === "SYSTEM"
+                          ? "system-message"
+                          : chat.senderName === userData.username
+                          ? "self"
+                          : "other"
+                      }`}
+                    >
+                      {chat.senderName !== userData.username &&
+                        chat.status !== "SYSTEM" && (
+                          <div className="sender-name">{chat.senderName}</div>
+                        )}
+                      <div className="message-content">
+                        <div className="message-text">{chat.message}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="send-message">
+                  <input
+                    type="text"
+                    placeholder="Escribe un mensaje"
+                    className="input-message"
+                    name="message"
+                    value={userData.message}
+                    onChange={handleValue}
+                    onKeyPress={(e) => e.key === "Enter" && sendPublicMessage()}
+                  />
+                  <button
+                    type="button"
+                    className="send-button"
+                    onClick={sendPublicMessage}
+                  >
+                    Enviar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="chat-content">
+                <ul className="chat-messages">
+                  {(privateChats.get(tab) || []).map((chat, index) => (
+                    <li
+                      key={index}
+                      className={`message ${
+                        chat.senderName === userData.username ? "self" : "other"
+                      }`}
+                    >
+                      {chat.senderName !== userData.username && (
+                        <div className="sender-name">{chat.senderName}</div>
+                      )}
+                      <div className="message-content">
+                        <div className="message-text">{chat.message}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <div className="send-message">
+                  <input
+                    type="text"
+                    placeholder={`Mensaje para ${tab}`}
+                    className="input-message"
+                    name="message"
+                    value={userData.message}
+                    onChange={handleValue}
+                    onKeyPress={(e) =>
+                      e.key === "Enter" && sendPrivateMessage()
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="send-button"
+                    onClick={sendPrivateMessage}
+                  >
+                    Enviar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <button onClick={handleUserDisconnect} className="disconnect-button">
             Salir del chat
           </button>
-          <div className="member-list">
-            <ul>
-              <li
-                onClick={() => setTab("CHATROOM")}
-                className={`member ${tab === "CHATROOM" && "active"}`}
-              >
-                Sala de Chat
-              </li>
-              {connectedUsers
-                .filter(
-                  (username) => username && username !== userData.username
-                )
-                .map((username, index) => (
-                  <li
-                    key={index}
-                    onClick={() => setTab(username)}
-                    className={`member ${tab === username && "active"}`}
-                  >
-                    {username}
-                  </li>
-                ))}
-            </ul>
-          </div>
-
-          {tab === "CHATROOM" ? (
-            <div className="chat-content">
-              <ul className="chat-messages">
-                {publicChats.map((chat, index) => (
-                  <li
-                    key={index}
-                    className={`message ${
-                      chat.status === "SYSTEM"
-                        ? "system-message"
-                        : chat.senderName === userData.username
-                        ? "self"
-                        : "other"
-                    }`}
-                  >
-                    {chat.senderName !== userData.username &&
-                      chat.status !== "SYSTEM" && (
-                        <div className="sender-name">{chat.senderName}</div>
-                      )}
-                    <div className="message-content">
-                      <div className="message-text">{chat.message}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="send-message">
-                <input
-                  type="text"
-                  placeholder="Escribe un mensaje"
-                  className="input-message"
-                  name="message"
-                  value={userData.message}
-                  onChange={handleValue}
-                  onKeyPress={(e) => e.key === "Enter" && sendPublicMessage()}
-                />
-                <button
-                  type="button"
-                  className="send-button"
-                  onClick={sendPublicMessage}
-                >
-                  Enviar
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="chat-content">
-              <ul className="chat-messages">
-                {(privateChats.get(tab) || []).map((chat, index) => (
-                  <li
-                    key={index}
-                    className={`message ${
-                      chat.senderName === userData.username ? "self" : "other"
-                    }`}
-                  >
-                    {chat.senderName !== userData.username && (
-                      <div className="sender-name">{chat.senderName}</div>
-                    )}
-                    <div className="message-content">
-                      <div className="message-text">{chat.message}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <div className="send-message">
-                <input
-                  type="text"
-                  placeholder={`Mensaje para ${tab}`}
-                  className="input-message"
-                  name="message"
-                  value={userData.message}
-                  onChange={handleValue}
-                  onKeyPress={(e) => e.key === "Enter" && sendPrivateMessage()}
-                />
-                <button
-                  type="button"
-                  className="send-button"
-                  onClick={sendPrivateMessage}
-                >
-                  Enviar
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        </>
       ) : (
         <div className="register">
-          <h2 style={{ margin: 20 }}>Unirse al Chat</h2>
+          <h2>Unirse a un Chat</h2>
           <input
             id="user-name"
             name="username"
@@ -311,8 +340,9 @@ export default function ChatRoom() {
             onKeyPress={(e) => e.key === "Enter" && registerUser()}
           />
           <button type="button" onClick={registerUser}>
-            Conectar
+            Conectarse
           </button>
+          {/* coment */}
         </div>
       )}
     </div>
