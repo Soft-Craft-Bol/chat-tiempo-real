@@ -286,7 +286,7 @@ export default function ChatRoom() {
                     <input
                         id="user-name"
                         name="username"
-                        placeholder="Enter your name (or leave blank for random)"
+                        placeholder="Ingrese su nombre para el chat"
                         value={userData.username}
                         onChange={handleValue}
                         onKeyPress={(e) => e.key === 'Enter' && registerUser()}
